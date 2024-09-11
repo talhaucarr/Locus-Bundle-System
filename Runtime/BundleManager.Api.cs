@@ -84,38 +84,62 @@ namespace BundleSystem
         }
 
 
-        public static T Load<T>(string bundleName, string assetName) where T : UnityEngine.Object
+        public static T Load<T>(string assetName) where T : UnityEngine.Object
         {
 #if UNITY_EDITOR
             if (UseAssetDatabase) 
             {
                 EnsureAssetDatabase();
-                var assetPath = s_EditorAssetMap.GetAssetPath<T>(bundleName, assetName);
+                var assetPath = s_EditorAssetMap.GetAssetPath<T>(assetName);
                 if(string.IsNullOrEmpty(assetPath)) return null; //asset not exist
                 return UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetPath);
             }
 #endif
             if(!Initialized) throw new System.Exception("BundleManager not initialized, try initialize first!");
+            var bundleName = GetBundleName(assetName);
             if (!s_AssetBundles.TryGetValue(bundleName, out var foundBundle)) return null;
             var loadedAsset = foundBundle.Bundle.LoadAsset<T>(assetName);
             if(loadedAsset != null) TrackObjectInternal(loadedAsset, foundBundle);
             return loadedAsset;
         }
-
         
-        public static T[] LoadWithSubAssets<T>(string bundleName, string assetName) where T : UnityEngine.Object
+        public static string GetBundleName(string assetName)
+        {
+            
+#if UNITY_EDITOR
+            if (UseAssetDatabase) 
+            {
+                EnsureAssetDatabase();
+                return s_EditorAssetMap.GetBundleName(assetName);
+            }
+#endif
+            
+            if(!Initialized) throw new System.Exception("BundleManager not initialized, try initialize first!");
+            foreach (var bundle in s_AssetBundles)
+            {
+                if (bundle.Value.Bundle.Contains(assetName))
+                {
+                    return bundle.Key;
+                }
+            }
+            return string.Empty;
+        }
+        
+        public static T[] LoadWithSubAssets<T>(string assetName) where T : UnityEngine.Object
         {
 #if UNITY_EDITOR
             if (UseAssetDatabase) 
             {
                 EnsureAssetDatabase();
-                var assetPath = s_EditorAssetMap.GetAssetPath<T>(bundleName, assetName);
+                
+                var assetPath = s_EditorAssetMap.GetAssetPath<T>(assetName);
                 if(string.IsNullOrEmpty(assetPath)) return new T[0];
                 var assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(assetPath);
                 return assets.Select(a => a as T).Where(a => a != null).ToArray();
             }
 #endif
             if(!Initialized) throw new System.Exception("BundleManager not initialized, try initialize first!");
+            var bundleName = GetBundleName(assetName);
             if (!s_AssetBundles.TryGetValue(bundleName, out var foundBundle)) return new T[0];
             var loadedAssets = foundBundle.Bundle.LoadAssetWithSubAssets<T>(assetName);
             TrackObjectsInternal(loadedAssets, foundBundle);
@@ -123,18 +147,19 @@ namespace BundleSystem
         }
 
 
-        public static BundleRequest<T> LoadAsync<T>(string bundleName, string assetName) where T : UnityEngine.Object
+        public static BundleRequest<T> LoadAsync<T>(string assetName) where T : UnityEngine.Object
         {
 #if UNITY_EDITOR
             if (UseAssetDatabase) 
             {
                 EnsureAssetDatabase();
-                var assetPath = s_EditorAssetMap.GetAssetPath<T>(bundleName, assetName);
+                var assetPath = s_EditorAssetMap.GetAssetPath<T>(assetName);
                 if(string.IsNullOrEmpty(assetPath)) return new BundleRequest<T>((T)null); //asset not exist
                 return new BundleRequest<T>(UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetPath));
             }
 #endif
             if(!Initialized) throw new System.Exception("BundleManager not initialized, try initialize first!");
+            var bundleName = GetBundleName(assetName);
             if (!s_AssetBundles.TryGetValue(bundleName, out var foundBundle)) return new BundleRequest<T>((T)null); //asset not exist
             var request = foundBundle.Bundle.LoadAssetAsync<T>(assetName);
             //need to keep bundle while loading, so we retain before load, release after load

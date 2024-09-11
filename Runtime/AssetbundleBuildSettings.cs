@@ -60,7 +60,7 @@ namespace BundleSystem
         /// </summary>
         public bool TryGetBundleNameAndAssetPath(string editorAssetPath, out string bundleName, out string assetPath)
         {
-            foreach(var setting in BundleSettings)
+            /*foreach(var setting in BundleSettings)
             {
                 var bundleFolderPath = UnityEditor.AssetDatabase.GUIDToAssetPath(setting.Folder.guid);
                 if (editorAssetPath.StartsWith(bundleFolderPath))
@@ -77,7 +77,7 @@ namespace BundleSystem
                     return true;
                 }
             }
-
+            */
             bundleName = string.Empty;
             assetPath = string.Empty;
             return false;
@@ -140,7 +140,8 @@ namespace BundleSystem
         public string BundleName;
         [Tooltip("Should this bundle included in player?")]
         public bool IncludedInPlayer = false;
-        public FolderReference Folder;
+        //public FolderReference Folder;
+        public List<AssetReference> AssetReferences = new List<AssetReference>();
         [Tooltip("Should include subfolder?")]
         public bool IncludeSubfolder = false;
         [Tooltip("Works only for remote bundle, true for LMZA, false for LZ4")]

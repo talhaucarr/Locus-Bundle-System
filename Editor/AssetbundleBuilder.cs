@@ -115,16 +115,27 @@ namespace BundleSystem
             var bundleList = new List<AssetBundleBuild>();
 
             foreach (var setting in settings.BundleSettings)
-            {
+            {/*
                 //find folder
                 var folderPath = AssetDatabase.GUIDToAssetPath(setting.Folder.guid);
                 if (!AssetDatabase.IsValidFolder(folderPath)) throw new Exception($"Could not found Path {folderPath} for {setting.BundleName}");
 
                 //collect assets
+                
+                Utility.GetFilesInDirectory(string.Empty, assetPathes, loadPathes, folderPath, setting.IncludeSubfolder);
+                if (assetPathes.Count == 0) Debug.LogWarning($"Could not found Any Assets {folderPath} for {setting.BundleName}");*/
+                
                 var assetPathes = new List<string>();
                 var loadPathes = new List<string>();
-                Utility.GetFilesInDirectory(string.Empty, assetPathes, loadPathes, folderPath, setting.IncludeSubfolder);
-                if (assetPathes.Count == 0) Debug.LogWarning($"Could not found Any Assets {folderPath} for {setting.BundleName}");
+
+                foreach (var assetReference in setting.AssetReferences)
+                {
+                    var assetPath = AssetDatabase.GUIDToAssetPath(assetReference.guid);
+                    if (!Utility.IsAssetCanBundled(assetPath)) continue;
+
+                    assetPathes.Add(assetPath);
+                    loadPathes.Add(Utility.CombinePath(setting.BundleName, Path.GetFileNameWithoutExtension(assetPath)));
+                }
 
                 //make assetbundlebuild
                 var newBundle = new AssetBundleBuild();

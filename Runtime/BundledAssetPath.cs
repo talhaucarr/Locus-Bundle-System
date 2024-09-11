@@ -20,7 +20,7 @@ namespace BundleSystem
         /// </summary>
         public T Load<T>() where T : Object
         {
-            return BundleManager.Load<T>(BundleName, AssetName);
+            return BundleManager.Load<T>(AssetName);
         }
         
         /// <summary>
@@ -28,7 +28,7 @@ namespace BundleSystem
         /// </summary>
         public BundleRequest<T> LoadAsync<T>() where T : Object
         {
-            return BundleManager.LoadAsync<T>(BundleName, AssetName);
+            return BundleManager.LoadAsync<T>( AssetName);
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace BundleSystem
         /// </summary>
         public static T Load<T>(this IBundledAssetPath path) where T : Object
         {
-            return BundleManager.Load<T>(path.GetBundleName(), path.GetAssetName());
+            return BundleManager.Load<T>(path.GetAssetName());
         }
         
         /// <summary>
@@ -96,7 +96,7 @@ namespace BundleSystem
         /// </summary>
         public static BundleRequest<T> LoadAsync<T>(this IBundledAssetPath path) where T : Object
         {
-            return BundleManager.LoadAsync<T>(path.GetBundleName(), path.GetAssetName());
+            return BundleManager.LoadAsync<T>(path.GetAssetName());
         }
 
         /// <summary>

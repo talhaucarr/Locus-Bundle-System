@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -19,8 +21,16 @@ namespace BundleSystem
             {
                 assetPath.Clear();
                 loadPath.Clear();
-                var folderPath = UnityEditor.AssetDatabase.GUIDToAssetPath(setting.Folder.guid);
-                Utility.GetFilesInDirectory(string.Empty, assetPath, loadPath, folderPath, setting.IncludeSubfolder);
+
+                foreach (var assetReference in setting.AssetReferences)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(assetReference.guid);
+                    if (!Utility.IsAssetCanBundled(path)) continue;
+
+                    assetPath.Add(path);
+                    loadPath.Add(Utility.CombinePath(string.Empty, Path.GetFileNameWithoutExtension(path)));
+                }
+                
                 var assetList = new Dictionary<string, List<string>>();
                 for(int i = 0; i < assetPath.Count; i++)
                 {
@@ -41,6 +51,18 @@ namespace BundleSystem
             if (!innerDic.TryGetValue(assetName, out var pathList)) return s_EmptyStringList;
             return pathList;
         }
+        
+        public string GetBundleName(string assetName)
+        {
+            foreach (var bundle in m_Map)
+            {
+                if (bundle.Value.ContainsKey(assetName))
+                {
+                    return bundle.Key;
+                }
+            }
+            return string.Empty;
+        }
 
         public string[] GetAssetPaths(string bundleName)
         {
@@ -60,8 +82,9 @@ namespace BundleSystem
             return assets.Count > 0;
         }
 
-        public string GetAssetPath<T>(string bundleName, string assetName) where T : UnityEngine.Object
+        public string GetAssetPath<T>(string assetName) where T : UnityEngine.Object
         {
+            var bundleName = GetBundleName(assetName);
             var assets = GetAssetPaths(bundleName, assetName);
             if (assets.Count == 0) return string.Empty;
 
