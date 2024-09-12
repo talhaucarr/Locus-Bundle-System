@@ -520,6 +520,101 @@ namespace BundleSystem
             result.Result = bundleReplaced;
             result.Done(BundleErrorCode.Success);
         }
+        
+        /// <summary>
+        /// Download a specific bundle by its name, load from cache if already cached.
+        /// </summary>
+        /// <param name="bundleName">The name of the bundle to download</param>
+        /// <param name="manifest">The manifest containing bundle information</param>
+        /// <returns>A BundleAsyncOperation indicating the result of the download</returns>
+        public static BundleAsyncOperation<bool> DownloadAssetBundle(string bundleName, AssetbundleBuildManifest manifest)
+        {
+            var result = new BundleAsyncOperation<bool>();
+            s_Helper.StartCoroutine(CoDownloadSpecificBundle(bundleName, manifest, result));
+            return result;
+        }
+
+        static IEnumerator CoDownloadSpecificBundle(string bundleName, AssetbundleBuildManifest manifest, BundleAsyncOperation<bool> result)
+        {
+            if (!Initialized)
+            {
+                Debug.LogError("Do Initialize first");
+                result.Done(BundleErrorCode.NotInitialized);
+                yield break;
+            }
+
+        #if UNITY_EDITOR
+            if (UseAssetDatabase)
+            {
+                result.Done(BundleErrorCode.Success);
+                yield break;
+            }
+        #endif
+
+            // Get the bundle info for the specified bundle name
+            var bundleInfo = manifest.BundleInfos.Find(b => b.BundleName == bundleName);
+
+            // Check if the bundle is already cached
+            var islocalBundle = s_LocalBundles.TryGetValue(bundleInfo.BundleName, out var localHash) && localHash == bundleInfo.Hash;
+            var isCached = Caching.IsVersionCached(bundleInfo.AsCached);
+            result.SetCachedBundle(isCached);
+
+            // Determine the download URL (local or remote)
+            var loadURL = islocalBundle ? Utility.CombinePath(LocalURL, bundleInfo.BundleName) : Utility.CombinePath(RemoteURL, bundleInfo.BundleName);
+            if (LogMessages) Debug.Log($"Loading Bundle Name: {bundleInfo.BundleName}, loadURL {loadURL}, isLocalBundle: {islocalBundle}, isCached {isCached}");
+
+            // If the bundle is already loaded with the same hash, skip downloading
+            if (s_AssetBundles.TryGetValue(bundleInfo.BundleName, out var previousBundle) && previousBundle.Hash == bundleInfo.Hash)
+            {
+                if (LogMessages) Debug.Log($"Loading Bundle Name: {bundleInfo.BundleName} Complete - load skipped");
+                result.Done(BundleErrorCode.Success);
+                yield break;
+            }
+
+            // Download the bundle using UnityWebRequest
+            var bundleReq = islocalBundle ? UnityWebRequestAssetBundle.GetAssetBundle(loadURL) : UnityWebRequestAssetBundle.GetAssetBundle(loadURL, bundleInfo.AsCached);
+            var operation = bundleReq.SendWebRequest();
+
+            while (!bundleReq.isDone)
+            {
+                result.SetProgress(operation.progress);
+                yield return null;
+
+                // If download is cancelled, break out
+                if (result.IsCancelled) break;
+            }
+
+            // Handle cancellation
+            if (result.IsCancelled)
+            {
+                bundleReq.Dispose();
+                yield break;
+            }
+
+            // Check if the request was successful
+            if (!Utility.CheckRequestSuccess(bundleReq))
+            {
+                result.Done(BundleErrorCode.NetworkError);
+                yield break;
+            }
+
+            // Load the bundle and add it to the asset bundle dictionary
+            var loadedBundle = new LoadedBundle(bundleInfo, loadURL, null, islocalBundle)
+            {
+                Bundle = DownloadHandlerAssetBundle.GetContent(bundleReq)
+            };
+            s_AssetBundles[bundleInfo.BundleName] = loadedBundle;
+
+            // Mark as used in cache and dispose of the web request
+            Caching.MarkAsUsed(bundleInfo.AsCached);
+            bundleReq.Dispose();
+
+            // Finish the operation successfully
+            result.Result = true;
+            result.Done(BundleErrorCode.Success);
+
+            if (LogMessages) Debug.Log($"Loading Bundle Name: {bundleInfo.BundleName} Complete");
+        }
 
         //helper class for coroutine and callbacks
         private class BundleManagerHelper : MonoBehaviour
