@@ -42,6 +42,9 @@ namespace BundleSystem
         static Dictionary<string, LoadedBundle> s_AssetBundles = new Dictionary<string, LoadedBundle>();
         static Dictionary<string, Hash128> s_LocalBundles = new Dictionary<string, Hash128>();
         static Dictionary<string, LoadedBundle> s_SceneNames = new Dictionary<string, LoadedBundle>();
+        
+        // Asset name to bundle map, to optimize searching.
+        private static Dictionary<string, string> s_AssetNameToBundleMap = new Dictionary<string, string>();
 
 #if UNITY_EDITOR
         public static bool UseAssetDatabase { get; private set; } = true;

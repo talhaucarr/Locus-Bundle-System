@@ -89,6 +89,7 @@ namespace BundleSystem
 #if UNITY_EDITOR
             if (UseAssetDatabase) 
             {
+                    Debug.Log($"Used assetdatabase");
                 EnsureAssetDatabase();
                 var assetPath = s_EditorAssetMap.GetAssetPath<T>(assetName);
                 if(string.IsNullOrEmpty(assetPath)) return null; //asset not exist
@@ -102,10 +103,9 @@ namespace BundleSystem
             if(loadedAsset != null) TrackObjectInternal(loadedAsset, foundBundle);
             return loadedAsset;
         }
-        
+
         public static string GetBundleName(string assetName)
         {
-            
 #if UNITY_EDITOR
             if (UseAssetDatabase) 
             {
@@ -113,18 +113,40 @@ namespace BundleSystem
                 return s_EditorAssetMap.GetBundleName(assetName);
             }
 #endif
-            
-            if(!Initialized) throw new System.Exception("BundleManager not initialized, try initialize first!");
+    
+            if (!Initialized)
+                throw new System.Exception("BundleManager not initialized, try initialize first!");
+
+            // First, try to get from the cached map.
+            if (s_AssetNameToBundleMap.TryGetValue(assetName, out var cachedBundleName))
+                return cachedBundleName;
+
+            // If not found in the cache, search in the loaded bundles.
             foreach (var bundle in s_AssetBundles)
             {
-                if (bundle.Value.Bundle.Contains(assetName))
+                var assetNames = bundle.Value.Bundle.GetAllAssetNames();
+
+                // We create a map between asset names (without extensions) and their corresponding bundle.
+                foreach (var asset in assetNames)
                 {
-                    return bundle.Key;
+                    var assetWithoutExtension = Path.GetFileNameWithoutExtension(asset);
+            
+                    // Cache the result for future lookups
+                    if (!s_AssetNameToBundleMap.ContainsKey(assetWithoutExtension))
+                    {
+                        s_AssetNameToBundleMap[assetWithoutExtension] = bundle.Key;
+                    }
+
+                    // Return the bundle name if the asset is found
+                    if (assetWithoutExtension == assetName)
+                        return bundle.Key;
                 }
             }
-            return string.Empty;
+
+            return string.Empty; // Return empty if the asset was not found
         }
-        
+
+
         public static T[] LoadWithSubAssets<T>(string assetName) where T : UnityEngine.Object
         {
 #if UNITY_EDITOR

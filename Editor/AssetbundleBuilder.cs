@@ -132,9 +132,8 @@ namespace BundleSystem
                 {
                     var assetPath = AssetDatabase.GUIDToAssetPath(assetReference.guid);
                     if (!Utility.IsAssetCanBundled(assetPath)) continue;
-
                     assetPathes.Add(assetPath);
-                    loadPathes.Add(Utility.CombinePath(setting.BundleName, Path.GetFileNameWithoutExtension(assetPath)));
+                    loadPathes.Add(Utility.CombinePath(string.Empty, Path.GetFileNameWithoutExtension(assetPath)));
                 }
 
                 //make assetbundlebuild
